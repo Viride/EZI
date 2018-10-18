@@ -1,0 +1,3 @@
+# EZI
+
+Prosta wyszukiwarka dokumentów.
