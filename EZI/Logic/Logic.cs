@@ -1,15 +1,14 @@
 ﻿using EZI.Model;
+using MathNet.Numerics.LinearAlgebra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 
 namespace EZI
 {
     public class Logic
     {
         public PorterStemmer stemmer = new PorterStemmer();
-
 
         public string StemText(string text)
         {
@@ -116,7 +115,7 @@ namespace EZI
                 var count = stemmed.Count(x => x == key.key);       //zliczanie wystąpień w zapytaniu
                 Q.Add(key.key, count);
             }
-            var max = Q.Select(x => x.Value).Max();      
+            var max = Q.Select(x => x.Value).Max();
             if (max == 0)
             {
                 return null;
@@ -140,8 +139,104 @@ namespace EZI
                 result.Add(bag.Key, val / (QVector * bagOfWords.Vectors[bag.Key]));     //sim(Q, Dx)
             }
             var sortedDict = from entry in result orderby entry.Value descending select entry;      //sortowanie wyniku
-            //return result;            
+            //return result;
             return sortedDict;
+        }
+
+        public Matrix<double> GenerateSimilarityKeywords(List<StemmedDocument> documents, List<Keyword> keywords)
+        {
+            var keywordsCount = new Dictionary<int, Dictionary<string, double>>();
+            var similarityKeywords = new Dictionary<int, Dictionary<string, double>>();
+            var matrix = Matrix<double>.Build.Dense(keywords.Count, documents.Count);
+            foreach (var document in documents)
+            {
+                foreach (var key in keywords)
+                {
+                    matrix[key.Id, document.Id] = document.Title.Concat(document.Contents).Count(x => x == key.key);
+                }
+            }
+
+            for (int i = 0; i < keywords.Count; i++)
+            {
+                double val = 0;
+                for (int j = 0; j < documents.Count; j++)
+                {
+                    val = val + Math.Pow(matrix[i, j], 2);
+                }
+                val = Math.Sqrt(val);
+                for (int j = 0; j < documents.Count; j++)
+                {
+                    matrix[i, j] = matrix[i, j] / val;
+                }
+            }
+
+            var matrixT = matrix.Transpose();
+            return matrix * matrixT;
+        }
+
+        public IOrderedEnumerable<KeyValuePair<string, double>> SearchExtended(string text, Matrix<double> similarity, List<Keyword> keywords)
+        {
+            var lowerText = text.ToLower();
+            var words = StringToListOfString(lowerText);
+            var stemmed = new List<string>();
+            foreach (var word in words)
+            {
+                stemmed.Add(StemText(word));        //stemmowanie zapytania
+            }
+            if (stemmed.Count == 1)
+            {
+                if (keywords.Select(x => x.key).Contains(stemmed[0]))
+                {
+                    var result = new Dictionary<string, double>();
+                    var row = keywords.Single(x => x.key == stemmed[0]).Id;
+                    foreach (var key in keywords)
+                    {
+                        if (row != key.Id)
+                        {
+                            var str = "" + stemmed[0] + " " + key.key;
+                            result.Add(str, similarity[row, key.Id]);
+                        }
+                    }
+                    var sortedDict = from entry in result orderby entry.Value descending select entry;      //sortowanie wyniku
+                    return sortedDict;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                var count = 0;
+                double[] array = new double[keywords.Count];
+                for(int i=0;i<array.Length; i++)
+                {
+                    array[i] = 0;
+                }
+                var result = new Dictionary<string, double>();
+                foreach (var word in stemmed)
+                {
+                    if (keywords.Select(x => x.key).Contains(word))
+                    {
+                        count++;
+                        var row = keywords.Single(x => x.key == word).Id;
+                        foreach (var key in keywords)
+                        {
+                            if (row != key.Id)
+                            {
+                                array[key.Id] += similarity[row, key.Id];
+                            }
+                        }
+                    }
+                }
+                foreach (var key in keywords)
+                {
+                    var str = text + " " + key.key;
+                    result.Add(str, array[key.Id]/count);
+                }
+                var sortedDict = from entry in result orderby entry.Value descending select entry;      //sortowanie wyniku
+                return sortedDict;
+            }
         }
 
         public string ListToString(List<string> list)

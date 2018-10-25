@@ -1,16 +1,17 @@
 ﻿using EZI.Model;
 using System;
 using System.Collections.Generic;
+using MathNet.Numerics.LinearAlgebra;
 using System.IO;
 using System.Linq;
 
 namespace EZI
 {
-    class Program
+    internal class Program
     {
         public static Logic logic = new Logic();
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             var documents = new List<Document>();
             var stemmedDocuments = new List<StemmedDocument>();
@@ -36,6 +37,7 @@ namespace EZI
             //PrintKeywords(keywords);
             keywords = logic.GenerateIdf(stemmedDocuments, keywords);
             bagOfWords = logic.GenerateBagOfWords(stemmedDocuments, keywords);
+            var similarityKeywords = logic.GenerateSimilarityKeywords(stemmedDocuments, keywords);
 
             var loop = true;
             while (loop)
@@ -45,7 +47,8 @@ namespace EZI
                 Console.WriteLine("Wcisnij '1' aby wyswietlic dokumenty");
                 Console.WriteLine("Wcisnij '2' aby wyswietlic stemmowane keywordsy");
                 Console.WriteLine("Wcisnij '3' aby wyszukać");
-                Console.WriteLine("Wcisnij '4' aby wyjść");
+                Console.WriteLine("Wcisnij '4' aby wyszukać z rozszerzeniem zapytania");
+                Console.WriteLine("Wcisnij '5' aby wyjść");
                 Console.WriteLine("__________________________________________________________________________________");
                 Console.WriteLine();
                 char key = Console.ReadKey().KeyChar;
@@ -68,21 +71,31 @@ namespace EZI
                             PrintDocuments(documents, nmb);
                         }
                         break;
+
                     case '2':
                         PrintKeywords(keywords);
                         break;
+
                     case '3':
                         Console.WriteLine("Wpisz wyszukiwane słowa");
                         var searchText = Console.ReadLine();
                         var found = logic.Search(searchText, stemmedDocuments, keywords, bagOfWords);
                         PrintSearchResult(found, documents);
                         break;
+
                     case '4':
-                        loop = false;
-                        break;
-                    default:
+                        Console.WriteLine("Wpisz wyszukiwane słowa");
+                        var extendedSearchText = Console.ReadLine();
+                        var extendedFound = logic.SearchExtended(extendedSearchText, similarityKeywords, keywords);
+                        PrintExtendedProposition(extendedFound);
                         break;
 
+                    case '5':
+                        loop = false;
+                        break;
+
+                    default:
+                        break;
                 }
             }
             //Console.WriteLine("Naciśnij klawisz, aby wyjść");
@@ -102,7 +115,6 @@ namespace EZI
             {
                 if (lineState == 0)
                 {
-
                     doc.Title = line;
                     lineState = 1;
                     continue;
@@ -122,8 +134,10 @@ namespace EZI
                     contents = contents + line + " ";
                 }
             }
+            doc.Contents = contents;
+            doc.Id = Id;
+            documents.Add(doc);
             file.Close();
-
 
             return documents;
         }
@@ -136,16 +150,17 @@ namespace EZI
             string[] lines = System.IO.File.ReadAllLines(keywordPath);
             foreach (var line in lines)
             {
-                var key = logic.StemText(line);
+                var lowLine = line.ToLower();
+                var key = logic.StemText(lowLine);
                 if (!keys.Contains(key))
                 {
                     keywords.Add(new Keyword { key = key, Id = Id });
-                    keys.Add(logic.StemText(line));
+                    keys.Add(key);
                     Id++;
                 }
             }
 
-            return keywords.Distinct().ToList();
+            return keywords;
         }
 
         public static void PrintDocuments(List<Document> documents)
@@ -220,6 +235,27 @@ namespace EZI
                 }
             }
             else Console.WriteLine("Brak wyników");
+            Console.WriteLine();
+        }
+
+        public static void PrintExtendedProposition(IOrderedEnumerable<KeyValuePair<string, double>> result)
+        {
+            Console.WriteLine("Propozycje szukania:");
+            if (result != null)
+            {
+                int i = 1;
+                foreach (var res in result)
+                {                    
+                    if (res.Value > 0)
+                    {
+                        Console.WriteLine($"{i}: {res.Key} -> {res.Value}");
+                    }
+                    i++;
+                    if (i > 5) break;
+                }
+            }
+            else Console.WriteLine("Brak wyników");
+
             Console.WriteLine();
         }
     }
