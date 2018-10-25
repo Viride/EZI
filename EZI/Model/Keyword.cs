@@ -9,6 +9,7 @@ namespace EZI.Model
     public class Keyword
     {
         public string key { get; set; }
+        public string PreStemmed { get; set; }
         public int Id { get; set; }
         public double Idf { get; set; }
         public int DocWithKeyCount { get; set; }

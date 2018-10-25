@@ -193,7 +193,7 @@ namespace EZI
                     {
                         if (row != key.Id)
                         {
-                            var str = "" + stemmed[0] + " " + key.key;
+                            var str = "" + words[0] + " " + key.PreStemmed;
                             result.Add(str, similarity[row, key.Id]);
                         }
                     }
@@ -222,7 +222,7 @@ namespace EZI
                         var row = keywords.Single(x => x.key == word).Id;
                         foreach (var key in keywords)
                         {
-                            if (row != key.Id)
+                            if (!stemmed.Contains(key.key))
                             {
                                 array[key.Id] += similarity[row, key.Id];
                             }
@@ -231,7 +231,7 @@ namespace EZI
                 }
                 foreach (var key in keywords)
                 {
-                    var str = text + " " + key.key;
+                    var str = text + " " + key.PreStemmed;
                     result.Add(str, array[key.Id]/count);
                 }
                 var sortedDict = from entry in result orderby entry.Value descending select entry;      //sortowanie wyniku

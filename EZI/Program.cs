@@ -1,7 +1,6 @@
 ﻿using EZI.Model;
 using System;
 using System.Collections.Generic;
-using MathNet.Numerics.LinearAlgebra;
 using System.IO;
 using System.Linq;
 
@@ -53,7 +52,6 @@ namespace EZI
                 Console.WriteLine();
                 char key = Console.ReadKey().KeyChar;
                 Console.WriteLine();
-                int id = 0;
                 switch (key)
                 {
                     case '1':
@@ -88,6 +86,38 @@ namespace EZI
                         var extendedSearchText = Console.ReadLine();
                         var extendedFound = logic.SearchExtended(extendedSearchText, similarityKeywords, keywords);
                         PrintExtendedProposition(extendedFound);
+                        Console.WriteLine("Wybierz którą opcję wyszukać");
+                        char newSearchKey = Console.ReadKey().KeyChar;
+                        Console.WriteLine();
+                        string newSearch;
+                        switch (newSearchKey)
+                        {
+                            case '1':
+                                newSearch = extendedFound.ElementAt(0).Key;
+                                break;
+
+                            case '2':
+                                newSearch = extendedFound.ElementAt(1).Key;
+                                break;
+
+                            case '3':
+                                newSearch = extendedFound.ElementAt(2).Key;
+                                break;
+
+                            case '4':
+                                newSearch = extendedFound.ElementAt(3).Key;
+                                break;
+
+                            case '5':
+                                newSearch = extendedFound.ElementAt(4).Key;
+                                break;
+
+                            default:
+                                newSearch = extendedFound.ElementAt(0).Key;
+                                break;
+                        }
+                        var result = logic.Search(newSearch, stemmedDocuments, keywords, bagOfWords);
+                        PrintSearchResult(result, documents);
                         break;
 
                     case '5':
@@ -154,7 +184,7 @@ namespace EZI
                 var key = logic.StemText(lowLine);
                 if (!keys.Contains(key))
                 {
-                    keywords.Add(new Keyword { key = key, Id = Id });
+                    keywords.Add(new Keyword { key = key, Id = Id, PreStemmed = lowLine });
                     keys.Add(key);
                     Id++;
                 }
@@ -245,7 +275,7 @@ namespace EZI
             {
                 int i = 1;
                 foreach (var res in result)
-                {                    
+                {
                     if (res.Value > 0)
                     {
                         Console.WriteLine($"{i}: {res.Key} -> {res.Value}");
